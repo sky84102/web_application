@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="ja">
+    <head>
+    <style>
+    body{
+        min-width: 360px;
+    }
+    </style>
+    <meta charset="utf-8">
+    <title>othello</title>
+    </head>
+    <body>
+        <div id="m3"></div>
+        <div id="koko"></div>
+        <div onclick="writehtml()" style="border: 1px solid #000000;width: 280px; margin-top: 10px; text-align: center">
+            黒：<input type="checkbox" id="hint_b" checked><label for="hint_b">ヒントを表示する</label> <input type="checkbox" id="com_b"><label for="com_b">COM</label><br>
+            白：<input type="checkbox" id="hint_w" checked><label for="hint_w">ヒントを表示する</label> <input type="checkbox" id="com_w"><label for="com_w">COM</label>
+        </div>
+        <div id="msg1"></div>
+<!--         <button onclick="test()">test</button> -->
+    <script>
+//マス目の状態を示す二次元配列の定義
+var cellstate = new Array();
+for(tmp=0; tmp<=8; tmp+=1){
+    cellstate[tmp] = Array();
+};
+
+//とりあえず、サンプル値を入れてみる
+for(tmpi=0; tmpi<=8; tmpi+=1){
+    for(tmpj=0; tmpj<=8; tmpj+=1){
+        cellstate[tmpi][tmpj] = 0;
+        };
+};
+cellstate[4][4] = -1;
+cellstate[4][5] = 1;
+cellstate[5][4] = 1;
+cellstate[5][5] = -1;
+stone = 4; //盤面にある石の和
+
+//"戻す"用の配列
+cellstate_back = new Array();
+cellstate_back[3] = Array();
+cellstate_back[3][0] = Array();
+cellstate_back[3][0][0] = 0;
+cellstate_back[3][0][1] = 1;
+
+//マス目に置くことができるかどうかの判定に使う示す二次元配列の定義
+var putable = new Array();
+for(tmp=0; tmp<=8; tmp+=1){
+   putable[tmp] = Array();
+};
+
+var turn = 1; // 1:黒　-1:白
+var msgborad, passflag = 0;
+var nowput = 0;
+
+//盤面を初期化
+writehtml();
+
+//盤面のHTML描画
+function writehtml() {
+    putable = checkPutable();
+    var d/*テーブルの文字列*/, frg/*石の色*/, i/*行*/, j/*列*/, num_b = 0/*黒石の個数*/, num_w = 0/*白石の個数*/;
+    if(turn == 1){
+        msgborad = "黒の番です";
+    } else {
+        msgborad = "白の番です";
+    }
+    d = "<table border='1' bordercolor='#000000' rules=all>";
+    d += "<tr align='center'><td colspan='5'>オセロ</td><td colspan='3'><button id='back' onclick='back()'>戻す</button> <button onClick='passTurn()' id='passbtn'>パス</button></td></tr>";
+    d += "<tr align='center'><td colspan='8' id='msg'>" + msgborad + "</td></tr>";
+    hint_flag = 0;
+    if((turn == 1 && document.getElementById("hint_b").checked) || (turn == -1 && document.getElementById("hint_w").checked)){
+        hint_flag = 1;
+    }
+    for(i=1; i<=8; i+=1){
+        d += "<tr align='center'>";
+        for(j=1; j<=8; j+=1){
+            frg = cellstate[i][j];
+            var bgcolor = "#669966";
+            if(putable[i][j] > 0 && hint_flag == 1){
+                bgcolor = "#66aa66";
+            } else if (nowput == i * 10 + j){
+                bgcolor = "#cccc33";
+            }
+            if(frg == 0){
+                d += "<td id='" + i+j;
+                if(!((turn == 1 && document.getElementById("com_b").checked) || (turn == -1 && document.getElementById("com_w").checked))){
+                    d += "' onclick='clicked(this);";
+                }
+                d += "' width='40' height='40' bgcolor='" + bgcolor + "'>";
+                if(putable[i][j] != 0 && hint_flag == 1){d += putable[i][j]}
+                d += "</td>";
+            }　else if(frg == 1){
+                d += "<td width='40' height='40' bgcolor='" + bgcolor + "'><font color='#000000' size=+2>●</font></td>";
+                num_b++;
+            } else if(frg == -1){
+                d += "<td width='40' height='40' bgcolor='" + bgcolor + "'><font color='#ffffff' size=+2>●</font></td>";
+                num_w++;
+            }
+        } // for j
+    d += "</tr>";
+    } // for i
+    d += "<tr><td colspan=8 style='text-align: center'>黒：" + num_b + "個　白：" + num_w + "個</td></tr>"
+    d += "</table>";
+    document.getElementById("koko").innerHTML = d;
+    stone = num_b + num_w;
+    if(stone <= 4){
+        document.getElementById("back").disabled = true;
+    } else {
+        document.getElementById("back").disabled = false;
+    }
+
+    //置けない時にパスを押せるようにする & 両者置けない時に勝敗をつける
+    passflag += 1;
+    for(tmpi=1; tmpi<=8; tmpi+=1){
+        for(tmpj=1; tmpj<=8; tmpj+=1){
+            if(putable[tmpi][tmpj] >= 1){
+                passflag = 0;
+            }
+        }
+    }
+    if(passflag == 0){
+        document.getElementById("passbtn").disabled = true;
+    } else if(passflag >= 1) {
+        document.getElementById("passbtn").disabled = false;
+        if(num_b == 0 || num_w == 0 || num_b + num_w == 64 || passflag >= 2){
+            if(num_b > num_w){
+                msg = "黒の勝ち";
+            } else if(num_b < num_w){
+                msg = "白の勝ち";
+            } else {
+                msg = "引き分け";
+            }
+            document.getElementById("msg").innerHTML = "<font color='#FF0000' size=+2><b>" + msg + "</b></font>";
+            document.getElementById("back").disabled = true;
+        }
+    }
+}
+
+//パスボタンを押した際の動作
+function passTurn(){
+    turn = turn * (-1);
+    writehtml();
+}
+
+setInterval("com()", 1000); //一秒ごとにCOMにチェックが入っているか判定
+function com(){
+    if((turn == 1 && document.getElementById("com_b").checked) || (turn == -1 && document.getElementById("com_w").checked)){
+        test();
+    }
+}
+
+// コンピューターに石を置かせる関数
+function test(){
+    if(stone != 64){
+    max_put = [0/*端っこ以外*/, 0/*隅*/, 0/*隅の隣*/, 0/*隅から遠い辺*/];
+    max_put_cell = [[]/*端っこ以外*/, 0/*隅*/, 0/*隅の隣*/, 0/*隅から遠い辺*/];
+    for(tmpi=1; tmpi<=8; tmpi++){
+        for(tmpj=1; tmpj<=8; tmpj++){
+            if(stone < 64){
+                if(putable[5][6] > 0){
+                    max_put[0] = 99;
+                    max_put_cell[0] = [56];
+                } else if((tmpi == 1 || tmpi == 8) && (tmpj == 1 || tmpj == 8)){ // 隅を優先的にとる
+                    if(putable[tmpi][tmpj] > max_put[1]){
+                        max_put[1] = putable[tmpi][tmpj];
+                        max_put_cell[1] = [tmpi * 10 + tmpj];
+                    }
+                } else if((tmpi <= 2 || tmpi >= 7) && (tmpj <= 2 || tmpj >= 7)){ // 相手に隅をとられにくくする
+                    if(putable[tmpi][tmpj] > max_put[2]){
+                        max_put[2] = putable[tmpi][tmpj];
+                        max_put_cell[2] = [tmpi * 10 + tmpj];
+                    }
+                } else if((tmpi == 1 || tmpi == 8 || tmpj == 1 || tmpj == 8) && max_put[3] < putable[tmpi][tmpj]){ // 相手に隅をとられにくくする
+                    max_put[3] = putable[tmpi][tmpj];
+                    max_put_cell[3] = [tmpi * 10 + tmpj];
+                } else if(putable[tmpi][tmpj] == max_put[0] && stone > 36){
+                    max_put_cell[0].push(tmpi * 10 + tmpj);
+                } else if(putable[tmpi][tmpj] > max_put[0] && stone > 36){
+                    max_put[0] = putable[tmpi][tmpj];
+                    max_put_cell[0] = [tmpi * 10 + tmpj];
+                } else if(putable[tmpi][tmpj] > 0 && stone <= 36){
+                    max_put[0] = putable[tmpi][tmpj];
+                    max_put_cell[0].push(tmpi * 10 + tmpj);
+                }
+            }
+        }
+    }
+    if(max_put[1] > 0){
+        cell_cand = max_put_cell[1];
+    } else if(max_put[3] > 0){
+        cell_cand = max_put_cell[3];
+    } else if(max_put[0] > 0){
+        cell_cand = max_put_cell[0][Math.floor(Math.random() * max_put_cell[0].length)];
+    } else if(max_put[2] > 0){
+        cell_cand = max_put_cell[2];
+    } else {
+        cell_cand = 0;
+    }
+    if(cell_cand != 0){
+        tagid = parseInt(cell_cand);
+        clicked(tagid);
+        nowput = tagid;
+    } else {
+        document.getElementById("passbtn").click();
+    }
+    tagid = 43;
+    }
+} // test()
+
+//マスをクリックしたときの動作
+function clicked(o){
+    if(Number.isInteger(o)){
+        var ic = parseInt(Number(o) / 10);
+        var jc = Number(o) - ic*10;
+    } else {
+        var ic = parseInt(Number(o.id) / 10);
+        var jc = Number(o.id) - ic*10;
+    }
+    document.getElementById("msg1").innerHTML = "ic:" + ic + "jc:" + jc;
+    var change = 0;
+    cellstate_back[stone] = Array();
+    for(tmp=0; tmp<=8; tmp+=1){
+        cellstate_back[stone][tmp] = Array();
+    };
+    for(tmpi=0; tmpi<=8; tmpi+=1){
+        for(tmpj=0; tmpj<=8; tmpj+=1){
+            cellstate_back[stone][tmpi][tmpj] = cellstate[tmpi][tmpj];
+            };
+    };
+
+    // 右方向
+    for(m=jc; m<=8; m++){
+        if(cellstate[ic][m] == turn && m-jc >= 2){
+            for(n=jc; n<=m; n++){
+                cellstate[ic][n] = turn;
+                change ++;
+            }
+            break;
+        } else if((cellstate[ic][m] == 0 && m != jc) || (cellstate[ic][m] == turn && m - jc == 1)){
+            break;
+        }
+    }
+
+    // 左方向
+    for(m=jc; m>=1; m--){
+        if(cellstate[ic][m] == turn && jc-m >= 2){
+            for(n=jc; n>=m; n--){
+                cellstate[ic][n] = turn;
+                change ++;
+            }
+            break;
+        } else if((cellstate[ic][m] == 0 && m != jc) || (cellstate[ic][m] == turn && jc - m == 1)){
+            break;
+        }
+    }
+
+    // 上方向
+    for(m=ic; m>=1; m--){
+        if(cellstate[m][jc] == turn && ic-m >= 2){
+            for(n=ic; n>=m; n--){
+                cellstate[n][jc] = turn;
+                change ++;
+            }
+            break;
+        } else if((cellstate[m][jc] == 0 && m != ic) || (cellstate[m][jc] == turn && ic-m == 1)){
+            break;
+        }
+    }
+
+    // 下方向
+    for(m=ic; m<=8; m++){
+        if(cellstate[m][jc] == turn && m-ic >= 2){
+            for(n=ic; n<=m; n++){
+                cellstate[n][jc] = turn;
+                change ++;
+            }
+            break;
+        } else if((cellstate[m][jc] == 0 && m != ic) || (cellstate[m][jc] == turn && m - ic == 1)){
+            break;
+        }
+    }
+
+    // 右下方向
+    m = ic; n = jc;
+    while(m <= 8 && n <= 8){
+        if(cellstate[m][n] == turn && m - ic >= 2){
+            for(p=ic; p<=m; p++){
+                cellstate[p][p-ic+jc] = turn;
+            }
+            change += m - ic - 1;
+            break;
+        } else if((cellstate[m][n] == 0 && m != ic) || (cellstate[m][n] == turn && m - ic == 1)){
+            break;
+        }
+        m++; n++;
+    }
+
+    // 左上方向
+    m = ic; n = jc;
+    while(m >= 1 && n >= 1){
+        if(cellstate[m][n] == turn && ic - m >= 2){
+            for(p=ic; p>=m; p--){
+               cellstate[p][p-ic+jc] = turn;
+            }
+            change += ic - m - 1;
+            break;
+        } else if((cellstate[m][n] == 0 && m != ic) || (cellstate[m][n] == turn && ic - m == 1)){
+            break;
+        }
+        m--; n--;
+    }
+
+    // 右上方向
+    m = ic; n = jc;
+    while(m >= 1 && n <= 8){
+        if(cellstate[m][n] == turn && ic - m >= 2){
+            for(p=ic; p>=m; p--){
+                cellstate[p][ic+jc-p] = turn;
+            }
+            change += ic - m - 1;
+            break;
+        } else if((cellstate[m][n] == 0 && m != ic) || (cellstate[m][n] == turn && ic - m == 1)){
+            break;
+        }
+        m--; n++;
+    }
+
+    // 左下方向
+    m = ic; n = jc;
+    while(m <= 8 && n >= 1){
+        if(cellstate[m][n] == turn && m - ic >= 2){
+            for(p=ic; p<=m; p++){
+                cellstate[p][ic+jc-p] = turn;
+            }
+            change += m - ic - 1;
+            break;
+        } else if((cellstate[m][n] == 0 && m != ic) || (cellstate[m][n] == turn && m - ic == 1)){
+            break;
+        }
+        m++; n--;
+    }
+    if(change > 0){
+        turn = turn * (-1);
+        nowput = ic * 10 + jc;
+        cellstate_back[stone][0][0] = nowput;
+        cellstate_back[stone][0][1] = turn;
+        writehtml();
+    }
+} // function clicked
+
+function checkPutable(){
+    var put = new Array();
+    for(tmp=0; tmp<=8; tmp+=1){
+        put[tmp] = Array();
+    };
+    for (tmpi=0; tmpi<=8; tmpi+=1){
+        for (tmpj=0; tmpj<=8; tmpj+=1){
+           put[tmpi][tmpj] = 0;
+        }
+    }
+    var ic, jc;
+    for(ic=1; ic<=8; ic++){
+    for(jc=1; jc<=8; jc++){
+        if(cellstate[ic][jc] == 0){
+            // 右方向
+            for(m=jc; m<=8; m++){
+                if(cellstate[ic][m] == turn && m-jc >= 2){
+                    put[ic][jc] += m - jc - 1;
+                    break;
+                } else if((cellstate[ic][m] == 0 && m != jc) || (cellstate[ic][m] == turn && m - jc == 1)){
+                    break;
+                }
+            }
+
+            // 左方向
+            for(m=jc; m>=1; m--){
+                if(cellstate[ic][m] == turn && jc-m >= 2){
+                    put[ic][jc] += jc - m - 1;
+                    break;
+                } else if((cellstate[ic][m] == 0 && m != jc) || (cellstate[ic][m] == turn && jc - m == 1)){
+                    break;
+                }
+            }
+
+            // 上方向
+            for(m=ic; m>=1; m--){
+                if(cellstate[m][jc] == turn && ic-m >= 2){
+                    put[ic][jc] += ic - m - 1;
+                    break;
+                } else if((cellstate[m][jc] == 0 && m != ic) || (cellstate[m][jc] == turn && ic-m == 1)){
+                    break;
+                }
+            }
+
+            // 下方向
+            for(m=ic; m<=8; m++){
+                if(cellstate[m][jc] == turn && m-ic >= 2){
+                    put[ic][jc] += m - ic - 1;
+                    break;
+                } else if((cellstate[m][jc] == 0 && m != ic) || (cellstate[m][jc] == turn && m - ic == 1)){
+                    break;
+                }
+            }
+
+            // 右下方向
+            m = ic; n = jc;
+            while(m <= 8 && n <= 8){
+                if(cellstate[m][n] == turn && m - ic >= 2){
+                    put[ic][jc] += m - ic - 1;
+                    break;
+                } else if((cellstate[m][n] == 0 && m != ic) || (cellstate[m][n] == turn && m - ic == 1)){
+                    break;
+                }
+                m++;
+                n++;
+            }
+
+            // 右下方向
+            m = ic; n = jc;
+            while(m >= 1 && n >= 1){
+                if(cellstate[m][n] == turn && ic - m >= 2){
+                    put[ic][jc] += ic - m - 1;
+                    break;
+                } else if((cellstate[m][n] == 0 && m != ic) || (cellstate[m][n] == turn && ic - m == 1)){
+                    break;
+                }
+                m--;
+                n--;
+            }
+
+            // 右上方向
+            m = ic; n = jc;
+            while(m >= 1 && n <= 8){
+                if(cellstate[m][n] == turn && ic - m >= 2){
+                    put[ic][jc] += ic - m - 1;
+                    break;
+                } else if((cellstate[m][n] == 0 && m != ic) || (cellstate[m][n] == turn && ic - m == 1)){
+                    break;
+                }
+                m--;
+                n++;
+            }
+
+            // 左下方向
+            m = ic; n = jc;
+            while(m <= 8 && n >= 1){
+                if(cellstate[m][n] == turn && m - ic >= 2){
+                    put[ic][jc] += m - ic - 1;
+                    break;
+                } else if((cellstate[m][n] == 0 && m != ic) || (cellstate[m][n] == turn && m - ic == 1)){
+                    break;
+                }
+                m++;
+                n--;
+            }
+        } // if cellstate[ic][jc] == 0
+    } // for jc
+    } // for ic
+    return put;
+} // function checkPutable
+function back(){
+     for(tmpi=0; tmpi<=8; tmpi+=1){
+         for(tmpj=0; tmpj<=8; tmpj+=1){
+             cellstate[tmpi][tmpj] = cellstate_back[stone-1][tmpi][tmpj];
+         };
+     };
+     nowput = cellstate_back[stone-2][0][0];
+     turn = cellstate_back[stone-2][0][1];
+     passflag = 0;
+     writehtml();
+}
+    </script>
+    </body>
+</html>
