@@ -1,0 +1,42 @@
+    #timetable{
+        border-collapse: separate;
+        border-spacing: 0 0;
+        table-layout: fixed;
+        padding: 0 3px;
+        float: left;
+        table-layout: fixed;
+        background: #E4Ef99;
+        border-spacing:0 3px;
+    }
+    #hour{
+        border: 0px none;
+        height: 45px;
+    }
+    .first-column{
+        border: 0px none;
+        padding: 0;
+    }
+    #timebar{
+        height: 18px;
+    }
+    td{
+        text-align: center;
+        font-size: 14px;
+        line-height: 120%;
+        vertical-align: middle;
+        max-height: 85px;
+    }
+    .place{
+        height: 55px;
+        background: #FFFFFF;
+        border: solid 2px #339999;
+        padding: 0 5px;
+    }
+    .project{
+        height: 25px;
+        font-weight: bold;
+        line-height: 120%;
+        border: solid 2px #CCCCCC;
+        font-size: 18px;
+        overflow: hidden;
+    }
