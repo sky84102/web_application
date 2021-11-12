@@ -1,4 +1,4 @@
 # web_application
 今まで制作したWeb用アプリケーション
 
-URL: https://sky84102.github.io/web_application/
+<a href="https://sky84102.github.io/web_application/" target="_blank">URL(新規タブ)</a>	
